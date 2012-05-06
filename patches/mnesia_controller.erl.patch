@@ -1,0 +1,73 @@
+--- mnesia_original/src/mnesia_controller.erl	2012-03-14 18:58:25.000000000 +0100
++++ mnesia_patch/src/mnesia_controller.erl	2012-03-14 18:34:05.000000000 +0100
+@@ -366,10 +366,12 @@
+ 	    do_force_load_table(Tab);
+ 	disc_copies ->
+ 	    do_force_load_table(Tab);
+ 	disc_only_copies ->
+ 	    do_force_load_table(Tab);
++        {external_copies, _} ->
++            do_force_load_table(Tab);        
+ 	unknown ->
+ 	    set({Tab, load_by_force}, true),
+ 	    cast({force_load_updated, Tab}),
+ 	    wait_for_tables([Tab], infinity);
+ 	{'EXIT', _} ->
+@@ -1503,12 +1505,16 @@
+ 	    NodeST = mnesia_lib:storage_type_at_node(Node, Tab),
+ 	    ReadST = mnesia_lib:storage_type_at_node(Read, Tab),
+ 	    if   %% Avoid reading from disc_only_copies
+ 		NodeST == disc_only_copies ->
+ 		    ignore;
++		NodeST == external_copies ->
++		    ignore;
+ 		ReadST == disc_only_copies ->
+ 		    mnesia_lib:set_remote_where_to_read(Tab);
++		ReadST == external_copies ->
++		    mnesia_lib:set_remote_where_to_read(Tab);
+ 		true ->
+ 		    ignore
+ 	    end,
+ 	    user_sync_tab(Tab),
+ 	    State;
+@@ -1553,10 +1559,11 @@
+     Cs = val({Tab, cstruct}),
+     Storage = mnesia_lib:cs_to_storage_type(node(), Cs),
+     Ram = Cs#cstruct.ram_copies,
+     Disc = Cs#cstruct.disc_copies,
+     DiscOnly = Cs#cstruct.disc_only_copies,
++    Ext = Cs#cstruct.external_copies,
+     BetterCopies0 = mnesia_lib:remote_copy_holders(Cs) -- Downs,
+     BetterCopies = BetterCopies0 -- Ram,
+     AccessMode = Cs#cstruct.access_mode,
+     Copies = mnesia_lib:copy_holders(Cs),
+     Masters = mnesia_recover:get_master_nodes(Tab),
+@@ -1585,11 +1592,11 @@
+ 	RemoteMaster == true ->
+ 	    %% Wait for remote master copy
+ 	    false;
+ 	Storage == ram_copies ->
+ 	    if
+-		Disc == [], DiscOnly == [] ->
++		Disc == [], DiscOnly == [], Ext == [] ->
+ 		    %% Nobody has copy on disc
+ 		    {true, {Tab, ram_only}};
+ 		true ->
+ 		    %% Some other node has copy on disc
+ 		    false
+@@ -1835,10 +1842,15 @@
+ 	disc_only_copies ->
+ 	    info_format(Tab,
+ 			dets:info(Tab, size),
+ 			dets:info(Tab, file_size),
+ 			"bytes on disc");
++        {external_copies, Mod} ->
++            info_format(Tab,
++                        Mod:info(Tab, size),
++                        Mod:info(Tab, memory),
++                        "words of mem");
+ 	_ ->
+ 	    info_format(Tab,
+ 			?ets_info(Tab, size),
+ 			?ets_info(Tab, memory),
+ 			"words of mem")

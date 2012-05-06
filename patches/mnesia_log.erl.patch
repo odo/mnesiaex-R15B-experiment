@@ -1,0 +1,26 @@
+--- mnesia_original/src/mnesia_log.erl	2012-03-14 18:58:25.000000000 +0100
++++ mnesia_patch/src/mnesia_log.erl	2012-03-14 18:49:34.000000000 +0100
+@@ -223,10 +223,11 @@
+     ok = disk_log:log(Log, Term).
+ 
+ %% Write commit records to the latest_log
+ log(C) when  C#commit.disc_copies == [],
+              C#commit.disc_only_copies  == [],
++             C#commit.external_copies  == [],
+              C#commit.schema_ops == [] ->
+     ignore;
+ log(C) ->
+     case mnesia_monitor:use_dir() of
+         true ->
+@@ -246,10 +247,11 @@
+ 
+ %% Synced
+ 
+ slog(C) when  C#commit.disc_copies == [],
+              C#commit.disc_only_copies  == [],
++             C#commit.external_copies  == [],
+              C#commit.schema_ops == [] ->
+     ignore;
+ slog(C) ->
+     case mnesia_monitor:use_dir() of
+         true ->

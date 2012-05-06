@@ -1,0 +1,15 @@
+--- mnesia_original/src/mnesia_index.erl	2012-03-14 18:58:25.000000000 +0100
++++ mnesia_patch/src/mnesia_index.erl	2012-03-14 18:36:42.000000000 +0100
+@@ -209,10 +209,12 @@
+     case Storage of
+ 	unknown ->
+ 	    ignore;
+ 	disc_only_copies ->
+ 	    init_disc_index(Tab, PosList);
++        {external_copies, Mod} ->
++            Mod:init_index(Tab, PosList);
+ 	ram_copies ->
+ 	    make_ram_index(Tab, PosList);
+ 	disc_copies ->
+ 	    make_ram_index(Tab, PosList)
+     end.
